@@ -1,12 +1,12 @@
-import telebot
-from telebot import types
-import gspread
-from google.oauth2.service_account import Credentials
-from datetime import datetime
 import logging
-import os
+from datetime import datetime
 
-# ---------------------- НАЛАШТУВАННЯ ----------------------
+import gspread
+import telebot
+from google.oauth2.service_account import Credentials
+from telebot import types
+
+#НАЛАШТУВАННЯ
 TOKEN = "8254409689:AAFg9v-RaCSnI2LB2BCflvTv3DGeNpStENc"
 MY_ID = 367161855
 BROTHER_ID = 908753738
@@ -15,7 +15,7 @@ BROTHER_ID = 908753738
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ---------------------- GOOGLE SHEETS ----------------------
+#GOOGLE SHEETS
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 CREDENTIALS_FILE = "credentials.json"
 SHEET_ID = "1TEBRTf_gRi2w-YaOPmouH95tPUR-y5LQIBHKrJ0wjmE"
@@ -31,7 +31,7 @@ except Exception as e:
     logger.error(f"Помилка підключення до Google Sheets: {e}")
     raise
 
-# ---------------------- БОТ ----------------------
+# БОТ
 bot = telebot.TeleBot(TOKEN)
 
 # Система балів за тривалість
@@ -49,7 +49,7 @@ admin_review_sessions = {}  # Для оцінки робіт адміном
 admin_goal_sessions = {}  # Для зміни мети адміном
 
 
-# ---------------------- ФУНКЦІЇ ДЛЯ РОБОТИ З GOOGLE SHEETS ----------------------
+# ФУНКЦІЇ ДЛЯ РОБОТИ З GOOGLE SHEETS
 def init_user_data(user_id, username, first_name):
     """Ініціалізує дані користувача в таблиці"""
     try:
@@ -222,7 +222,6 @@ def add_activity_log(user_id, activity_type, description, duration, points_earne
 def setup_sheets_structure():
     """Створює необхідну структуру таблиць якщо її немає"""
     try:
-        # Перевіряємо і створюємо лист "Activity Logs" якщо потрібно
         try:
             log_sheet = workbook.worksheet("Activity Logs")
         except gspread.exceptions.WorksheetNotFound:
@@ -233,7 +232,6 @@ def setup_sheets_structure():
             log_sheet.append_row(log_headers)
             logger.info("Створено лист 'Activity Logs'")
 
-        # Перевіряємо і створюємо лист "Gift Settings" якщо потрібно
         try:
             gift_sheet = workbook.worksheet("Gift Settings")
         except gspread.exceptions.WorksheetNotFound:
@@ -253,7 +251,6 @@ def setup_sheets_structure():
             "total_points", "goal", "last_activity", "gifts_received"
         ]
 
-        # Якщо заголовки не співпадають, оновлюємо їх
         if current_headers != required_headers:
             main_sheet.clear()
             main_sheet.append_row(required_headers)
@@ -281,7 +278,7 @@ def create_progress_bar(current, goal, bar_length=15):
     return f"[{bar}] {current}/{goal} ({progress:.1%})"
 
 
-# ---------------------- КОМАНДИ БОТА ----------------------
+# КОМАНДИ БОТА
 @bot.message_handler(commands=['start'])
 def start_command(message):
     """Команда початку роботи з ботом"""
@@ -291,7 +288,6 @@ def start_command(message):
 
     # Перевіряємо хто користувач
     if is_brother(user_id):
-        # Для брата - показуємо повний функціонал
         user_data = init_user_data(user_id, username, first_name)
 
         if user_data:
@@ -317,7 +313,6 @@ def start_command(message):
         show_main_menu(message.chat.id, welcome_text)
 
     elif is_admin(user_id):
-        # Для адміна - показуємо адмінське меню
         admin_welcome_text = (
             f"👑 *Вітаю, Володарю!* 👑\n\n"
             f"Ти зайшов у *Панель Керування Світом*.\n"
@@ -327,7 +322,6 @@ def start_command(message):
         show_admin_menu(message.chat.id, admin_welcome_text)
 
     else:
-        # Для інших користувачів - повідомлення про доступ
         bot.send_message(
             message.chat.id,
             "🚫 *Доступ заборонено!*\n\nЦей світ призначений лише для обраних героїв.",
@@ -397,7 +391,6 @@ def add_activity_start(message):
     btn5 = types.KeyboardButton('🚪 Назад')
     markup.add(btn1, btn2, btn3, btn4, btn5)
 
-    # Зберігаємо стан користувача
     user_sessions[user_id] = {'state': 'choosing_activity'}
 
     bot.send_message(
@@ -415,7 +408,6 @@ def main_activity_chosen(message):
     """Обробляє вибір основної активності"""
     user_id = message.from_user.id
 
-    # Відповідність emoji і ключів
     activity_map = {
         '🏴‍☠️ Англійська': 'english',
         '💪 Тренування': 'workout',
@@ -425,7 +417,6 @@ def main_activity_chosen(message):
     activity_key = activity_map[message.text]
     activity_name = message.text
 
-    # Зберігаємо в сесії
     if user_id not in user_sessions:
         user_sessions[user_id] = {}
 
@@ -435,7 +426,6 @@ def main_activity_chosen(message):
         'activity_name': activity_name
     })
 
-    # Показуємо кнопки вибору тривалості
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton('⚡ 5 хв')
     btn2 = types.KeyboardButton('🚀 15 хв')
@@ -479,7 +469,6 @@ def duration_chosen(message):
         show_main_menu(message.chat.id, "Обери дію:")
         return
 
-    # Зберігаємо тривалість
     user_sessions[user_id]['duration'] = duration
 
     if duration == '≥ 1 год.':
@@ -493,7 +482,6 @@ def duration_chosen(message):
             parse_mode='Markdown'
         )
     else:
-        # Для коротших тривалостей - відразу запитуємо фото
         user_sessions[user_id]['state'] = 'waiting_photo_short'
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton('📸 Додати фото')
@@ -632,29 +620,23 @@ def finish_activity(message, has_photo=False):
         show_main_menu(message.chat.id, "Обери дію:")
         return
 
-    # Отримуємо поточні дані користувача
     user_data = get_user_data(user_id)
     if not user_data:
         bot.send_message(message.chat.id, "🔮 Помилка доступу до даних персонажа.")
         return
 
-    # Визначаємо бали та чи потрібна перевірка
     needs_review = False
     points_earned = 0
 
     if activity_type == 'other' or duration == '≥ 1 год.':
-        # Для "Інше" або тривалості ≥ 1 год. - потрібна перевірка
         needs_review = True
 
-        # Для "Інше" тривалість не використовується, тому ставимо пусте значення
         if activity_type == 'other':
             duration = "Спеціальна місія"
 
-        # Додаємо запис в лог (без балів)
         log_row_id = add_activity_log(user_id, activity_type, description, duration, 0, has_photo, True, photo_file_id,
                                       False)
 
-        # Визначаємо тип повідомлення для адміна
         if activity_type == 'other':
             admin_message_text = (
                 f"🔔 *ПОТРІБНА ОЦІНКА СПЕЦІАЛЬНОЇ МІСІЇ!*\n\n"
@@ -701,10 +683,8 @@ def finish_activity(message, has_photo=False):
             log_row_id = add_activity_log(user_id, activity_type, description, duration, points_earned, has_photo,
                                           False, photo_file_id, True)
 
-            # Отримуємо дані про подарунок для прогрес-бара
             gift_data = get_gift_data()
 
-            # Формуємо повідомлення про успіх з прогрес-баром
             success_text = (
                 f"🎉 *ПОДВИГ ЗАРЕЄСТРОВАНО!* 🎉\n\n"
                 f"🏅 *Тип:* {activity_name}\n"
@@ -716,7 +696,6 @@ def finish_activity(message, has_photo=False):
                 f"{create_progress_bar(new_total, gift_data['goal'])}"
             )
 
-            # Якщо є фото, відправляємо з фото
             if has_photo and photo_file_id:
                 bot.send_photo(
                     message.chat.id,
@@ -727,14 +706,12 @@ def finish_activity(message, has_photo=False):
             else:
                 bot.send_message(message.chat.id, success_text, parse_mode='Markdown')
 
-            # Перевіряємо і відправляємо подарунок при досягненні мети
             check_and_send_gift(message.chat.id, user_id, user_data, new_total)
 
         else:
             bot.send_message(message.chat.id, "❌ Помилка збереження даних!")
 
     if needs_review:
-        # Для активностей, що потребують перевірки
         if activity_type == 'other':
             review_text = (
                 f"⏳ *СПЕЦІАЛЬНА МІСІЯ ВІДПРАВЛЕНА НА ПЕРЕВІРКУ!*\n\n"
@@ -762,7 +739,6 @@ def finish_activity(message, has_photo=False):
         else:
             bot.send_message(message.chat.id, review_text, parse_mode='Markdown')
 
-    # Очищаємо сесію і показуємо головне меню
     if user_id in user_sessions:
         del user_sessions[user_id]
 
@@ -786,12 +762,10 @@ def show_current_gift(message):
         f"⚔️ *Ти отримаєш цю нагороду, коли досягнеш мети!* ⚔️"
     )
 
-    # Прогрес-бар
     progress_bar = create_progress_bar(user_data['total_points'], gift_data['goal'])
 
     full_message = f"{gift_description}\n\n*Твій прогрес:*\n{progress_bar}"
 
-    # Якщо є фото подарунка, відправляємо з фото
     if gift_data.get('photo_file_id'):
         bot.send_photo(message.chat.id, gift_data['photo_file_id'], caption=full_message, parse_mode='Markdown')
     else:
@@ -820,7 +794,6 @@ def check_and_send_gift(chat_id, user_id, user_data, new_total_points):
     goal = gift_data['goal']
 
     if new_total_points >= goal:
-        # Відправляємо повідомлення про подарунок
         gift_message = (
             f"🎉🎉🎉 *ВЕЛИКА ПЕРЕМОГА!* 🎉🎉🎉\n\n"
             f"⚔️ *Ти досяг мети в {goal} XP!*\n"
@@ -828,21 +801,18 @@ def check_and_send_gift(chat_id, user_id, user_data, new_total_points):
             f"🧙 *Володар зв'яжеться з тобою для вручення нагороди!* 🎁"
         )
 
-        # Оновлюємо лічильник подарунків і скидаємо бали (або збільшуємо мету)
         updates = {
             'gifts_received': user_data['gifts_received'] + 1,
-            'total_points': new_total_points - goal,  # Залишаємо залишок балів
-            'goal': goal  # Зберігаємо поточну мету
+            'total_points': new_total_points - goal,
+            'goal': goal
         }
         update_user_data(user_id, updates)
 
-        # Відправляємо фото подарунка якщо є
         if gift_data.get('photo_file_id'):
             bot.send_photo(chat_id, gift_data['photo_file_id'], caption=gift_message, parse_mode='Markdown')
         else:
             bot.send_message(chat_id, gift_message, parse_mode='Markdown')
 
-        # Сповіщаємо адміністратора (тебе)
         admin_message = (
             f"👑 *УЧЕНЬ ДОСЯГ МЕТИ!*\n\n"
             f"🧙 *Учень:* {user_data['first_name']}\n"
@@ -882,7 +852,6 @@ def handle_cancel_review(call):
         return
 
     try:
-        # Розбираємо callback_data: cancel_review_{log_row_id}_{points}
         parts = call.data.split('_')
         print(f"🔍 Розбито на частини: {parts}")
 
@@ -892,7 +861,6 @@ def handle_cancel_review(call):
 
             print(f"📊 ID запису: {log_row_id}, Бали для скасування: {points}")
 
-            # Отримуємо поточні дані брата
             user_data = get_user_data(BROTHER_ID)
             if not user_data:
                 print("❌ Дані брата не знайдені")
@@ -901,7 +869,6 @@ def handle_cancel_review(call):
 
             print(f"📈 Поточні бали брата: {user_data['total_points']}")
 
-            # Віднімаємо бали
             new_total = user_data['total_points'] - points
             if new_total < 0:
                 new_total = 0
@@ -913,7 +880,6 @@ def handle_cancel_review(call):
 
             print(f"🔄 Оновлюємо дані: {updates}")
 
-            # Оновлюємо дані користувача
             if update_user_data(BROTHER_ID, updates):
                 print("✅ Дані брата оновлено")
             else:
@@ -930,15 +896,12 @@ def handle_cancel_review(call):
             else:
                 print("❌ Помилка оновлення логу")
 
-            # Видаляємо повідомлення
             try:
-                # Видаляємо повідомлення адміна
                 bot.delete_message(call.message.chat.id, call.message.message_id)
                 print("✅ Повідомлення адміна видалено")
             except Exception as e:
                 print(f"❌ Помилка видалення повідомлення адміна: {e}")
 
-            # Сповіщаємо брата
             try:
                 brother_message = f"❌ Оцінка скасована адміністратором. Віднімано {points} балів."
                 bot.send_message(BROTHER_ID, brother_message)
@@ -946,7 +909,6 @@ def handle_cancel_review(call):
             except Exception as e:
                 print(f"❌ Помилка відправки повідомлення брату: {e}")
 
-            # Сповіщаємо адміна
             try:
                 admin_message = f"❌ Оцінка скасована. Віднімано {points} балів."
                 bot.send_message(call.message.chat.id, admin_message)
@@ -968,8 +930,6 @@ def handle_cancel_review(call):
         logger.error(error_msg)
         bot.answer_callback_query(call.id, "❌ Помилка при скасуванні")
 
-    # ... решта коду
-# Обробник для inline кнопок адміна
 @bot.callback_query_handler(func=lambda call: True)
 def handle_admin_buttons(call):
     """Обробляє натискання кнопок адмін-панелі"""
@@ -978,7 +938,6 @@ def handle_admin_buttons(call):
         return
 
     if call.data == 'admin_stats':
-        # Показуємо статистику брата
         user_data = get_user_data(BROTHER_ID)
         if user_data:
             stats_text = (
@@ -996,7 +955,6 @@ def handle_admin_buttons(call):
             bot.send_message(call.message.chat.id, "Дані брата не знайдені")
 
     elif call.data == 'admin_reset':
-        # Скидання статистики брата
         user_data = get_user_data(BROTHER_ID)
         if user_data:
             updates = {
@@ -1014,17 +972,14 @@ def handle_admin_buttons(call):
                 bot.send_message(call.message.chat.id, "❌ Помилка при скиданні статистики")
 
     elif call.data == 'admin_goal':
-        # Початок процесу зміни мети
         admin_goal_sessions[call.from_user.id] = {'state': 'waiting_goal_description'}
         bot.send_message(call.message.chat.id, "📝 Введи новий опис подарунка:")
 
     elif call.data == 'custom_points':
-        # Запитуємо довільну оцінку
         admin_review_sessions[call.from_user.id] = {'state': 'waiting_custom_points'}
         bot.send_message(call.message.chat.id, "💰 Введи кількість балів для нарахування брату:")
 
     elif call.data.startswith('review_'):
-        # Початок процесу оцінки роботи
         log_row_id = int(call.data.split('_')[1])
         admin_review_sessions[call.from_user.id] = {
             'state': 'waiting_review_points',
@@ -1051,7 +1006,6 @@ def handle_custom_points(message):
             }
             update_user_data(BROTHER_ID, updates)
 
-            # Додаємо запис в лог
             log_row_id = add_activity_log(BROTHER_ID, "custom", f"Довільна оцінка адміна: {points} балів", "", points,
                                           False, False, None, True)
 
@@ -1062,18 +1016,15 @@ def handle_custom_points(message):
                 f"💰 Всього балів: {new_total}"
             )
 
-            # Відправляємо повідомлення брату з кнопкою скасування
             markup = types.InlineKeyboardMarkup()
             markup.add(
                 types.InlineKeyboardButton('❌ Скасувати оцінку', callback_data=f'cancel_review_{log_row_id}_{points}'))
 
             brother_message = bot.send_message(BROTHER_ID, success_text, reply_markup=markup, parse_mode='HTML')
 
-            # Відправляємо повідомлення адміну з кнопкою скасування
             admin_success_text = f"✅ Нараховано {points} балів брату!"
             admin_message = bot.send_message(message.chat.id, admin_success_text, reply_markup=markup)
 
-            # Зберігаємо ID повідомлень для можливості скасування
             admin_review_sessions[message.from_user.id] = {
                 'state': 'review_completed',
                 'log_row_id': log_row_id,
@@ -1083,7 +1034,6 @@ def handle_custom_points(message):
                 'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
 
-            # Перевіряємо досягнення мети
             check_and_send_gift(BROTHER_ID, BROTHER_ID, user_data, new_total)
         else:
             bot.send_message(message.chat.id, "❌ Помилка: дані брата не знайдені")
@@ -1111,13 +1061,11 @@ def handle_review_points(message):
             bot.send_message(message.chat.id, "❌ Помилка: не знайдено запис для оцінки")
             return
 
-        # Оновлюємо лог
         update_activity_log(log_row_id, {
             "points_earned": points,
             "admin_reviewed": "Так"
         })
 
-        # Оновлюємо загальні бали брата
         user_data = get_user_data(BROTHER_ID)
         if user_data:
             new_total = user_data['total_points'] + points
@@ -1127,24 +1075,20 @@ def handle_review_points(message):
             }
             update_user_data(BROTHER_ID, updates)
 
-            # Сповіщаємо брата
             success_text = (
                 f"🎉 <b>Твою активність оцінено!</b>\n\n"
                 f"⭐ Отримано балів: +{points}\n"
                 f"💰 Всього балів: {new_total}"
             )
 
-            # Відправляємо повідомлення брату з кнопкою скасування
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton('❌ Скасувати оцінку', callback_data=f'cancel_review_{log_row_id}_{points}'))
 
             brother_message = bot.send_message(BROTHER_ID, success_text, reply_markup=markup, parse_mode='HTML')
 
-            # Відправляємо повідомлення адміну з кнопкою скасування
             admin_success_text = f"✅ Активність оцінена!\nНараховано: {points} балів"
             admin_message = bot.send_message(message.chat.id, admin_success_text, reply_markup=markup)
 
-            # Зберігаємо ID повідомлень для можливості скасування
             admin_review_sessions[message.from_user.id] = {
                 'state': 'review_completed',
                 'log_row_id': log_row_id,
@@ -1154,7 +1098,6 @@ def handle_review_points(message):
                 'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
 
-            # Перевіряємо досягнення мети
             check_and_send_gift(BROTHER_ID, BROTHER_ID, user_data, new_total)
         else:
             bot.send_message(message.chat.id, "❌ Помилка: дані брата не знайдені")
@@ -1176,13 +1119,11 @@ def handle_cancel_review(call):
         return
 
     try:
-        # Розбираємо callback_data: cancel_review_{log_row_id}_{points}
         parts = call.data.split('_')
         if len(parts) >= 4:
             log_row_id = int(parts[2])
             points = int(parts[3])
 
-            # Віднімаємо бали
             user_data = get_user_data(BROTHER_ID)
             if user_data:
                 new_total = user_data['total_points'] - points
@@ -1192,17 +1133,14 @@ def handle_cancel_review(call):
                 }
                 update_user_data(BROTHER_ID, updates)
 
-                # Оновлюємо лог
                 update_activity_log(log_row_id, {
                     "points_earned": 0,
                     "admin_reviewed": "Скасовано"
                 })
 
-            # Видаляємо повідомлення у брата
             brother_message_id = None
             admin_message_id = None
 
-            # Шукаємо сесію з цим log_row_id
             for user_id, session in admin_review_sessions.items():
                 if session.get('log_row_id') == log_row_id:
                     brother_message_id = session.get('brother_message_id')
@@ -1212,21 +1150,18 @@ def handle_cancel_review(call):
                         del admin_review_sessions[user_id]
                     break
 
-            # Видаляємо повідомлення у брата
             if brother_message_id:
                 try:
                     bot.delete_message(BROTHER_ID, brother_message_id)
                 except Exception as e:
                     logger.error(f"Помилка при видаленні повідомлення брата: {e}")
 
-            # Видаляємо повідомлення у адміна
             if admin_message_id:
                 try:
                     bot.delete_message(call.message.chat.id, admin_message_id)
                 except Exception as e:
                     logger.error(f"Помилка при видаленні повідомлення адміна: {e}")
 
-            # Видаляємо поточне повідомлення з кнопкою (адмінське)
             try:
                 bot.delete_message(call.message.chat.id, call.message.message_id)
             except Exception as e:
@@ -1235,7 +1170,6 @@ def handle_cancel_review(call):
             # Сповіщаємо брата
             bot.send_message(BROTHER_ID, "❌ Оцінка скасована адміністратором.")
 
-            # Сповіщаємо адміна
             bot.send_message(call.message.chat.id, f"❌ Оцінка скасована. Віднімано {points} балів.")
 
             bot.answer_callback_query(call.id, "✅ Оцінка скасована!")
@@ -1269,7 +1203,6 @@ def handle_goal_points(message):
         admin_session = admin_goal_sessions.get(message.from_user.id, {})
         description = admin_session.get('description', '')
 
-        # Оновлюємо дані про подарунок
         updates = {
             'goal': goal_points,
             'description': description
@@ -1308,7 +1241,6 @@ def handle_goal_photo_final(message):
     }
 
     if update_gift_data(updates):
-        # Оновлюємо мету у всіх користувачів
         records = sheet.get_all_records()
         for i, record in enumerate(records, start=2):
             if record.get('user_id'):
@@ -1323,21 +1255,19 @@ def handle_goal_photo_final(message):
         )
         bot.send_message(message.chat.id, success_text)
 
-        # Сповіщаємо брата
         bot.send_message(BROTHER_ID, "🎁 Оновлено подарунок! Натисни 'Поточний подарунок' щоб побачити зміни.")
     else:
         bot.send_message(message.chat.id, "❌ Помилка при оновленні мети")
 
-    # Очищаємо сесію
     if message.from_user.id in admin_goal_sessions:
         del admin_goal_sessions[message.from_user.id]
 
 
-# ---------------------- ЗАПУСК БОТА ----------------------
+# ЗАПУСК БОТА
 if __name__ == '__main__':
     logger.info("Бот запущений...")
     try:
-        setup_sheets_structure()  # Створюємо структуру таблиць
+        setup_sheets_structure()
         bot.polling(none_stop=True, interval=0)
     except Exception as e:
         logger.error(f"Помилка при роботі бота: {e}")
