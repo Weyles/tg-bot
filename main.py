@@ -7,7 +7,8 @@ from google.oauth2.service_account import Credentials
 from telebot import types
 
 #НАЛАШТУВАННЯ
-TOKEN = "8254409689:AAFg9v-RaCSnI2LB2BCflvTv3DGeNpStENc"
+import os
+TOKEN = os.environ.get('TOKEN', '8254409689:AAFg9v-RaCSnI2LB2BCflvTv3DGeNpStENc')
 MY_ID = 367161855
 BROTHER_ID = 908753738
 
@@ -15,10 +16,34 @@ BROTHER_ID = 908753738
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-#GOOGLE SHEETS
+# ---------------------- GOOGLE SHEETS ----------------------
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-CREDENTIALS_FILE = "credentials.json"
 SHEET_ID = "1TEBRTf_gRi2w-YaOPmouH95tPUR-y5LQIBHKrJ0wjmE"
+
+# Ініціалізація Google Sheets
+try:
+    import json
+    import os
+
+    # Спочатку пробуємо отримати credentials зі змінної середовища
+    creds_json = os.environ.get('GOOGLE_CREDENTIALS')
+    if creds_json:
+        # Використовуємо змінну середовища
+        creds_dict = json.loads(creds_json)
+        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+        logger.info("✅ Використовуються credentials зі змінної середовища")
+    else:
+        # Використовуємо локальний файл (для розробки)
+        creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
+        logger.info("✅ Використовуються credentials з файлу")
+
+    client = gspread.authorize(creds)
+    workbook = client.open_by_key(SHEET_ID)
+    sheet = workbook.worksheet("Bot Database")
+    logger.info("✅ Успішне підключення до Google Sheets")
+except Exception as e:
+    logger.error(f"❌ Помилка підключення до Google Sheets: {e}")
+    raise
 
 # Ініціалізація Google Sheets
 try:
