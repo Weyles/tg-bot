@@ -1,3 +1,4 @@
+# Telegram Bot Dependencies for Railway
 pyTelegramBotAPI==4.15.4
 gspread==5.11.0
 google-auth==2.22.0
