@@ -3,6 +3,7 @@ import os
 import logging
 import gspread
 from google.oauth2.service_account import Credentials
+import telebot
 
 logger = logging.getLogger(__name__)
 
