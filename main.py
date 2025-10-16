@@ -1,38 +1,43 @@
-import telebot
-import logging
 import os
 import json
+import logging
+import telebot
 import gspread
 from google.oauth2.service_account import Credentials
 
+# ---------------------- ЛОГЕР ----------------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ---------------------- GOOGLE SHEETS ----------------------
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file"
 ]
-
 SHEET_ID = "1TEBRTf_gRi2w-YaOPmouH95tPUR-y5LQIBHKrJ0wjmE"
 
-# Отримуємо credentials з змінної середовища
-creds_json = os.environ.get('GOOGLE_CREDENTIALS')
-if not creds_json:
-    raise Exception("❌ GOOGLE_CREDENTIALS не задано!")
+sheet = None
+try:
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+    if not creds_json:
+        raise ValueError("❌ Змінна середовища GOOGLE_CREDENTIALS не задана!")
 
-creds_dict = json.loads(creds_json)
-creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-client = gspread.authorize(creds)
-sheet = client.open_by_key(SHEET_ID).worksheet("Bot Database")
-
-
+    creds_dict = json.loads(creds_json)
+    creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+    client = gspread.authorize(creds)
+    sheet = client.open_by_key(SHEET_ID).worksheet("Bot Database")
+    logger.info("✅ Підключення до Google Sheets успішне")
+except Exception as e:
+    logger.error(f"❌ Помилка підключення до Google Sheets: {e}")
 
 # ---------------------- БОТ ----------------------
-import telebot
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
-    raise Exception("❌ TOKEN не задано!")
+    raise Exception("❌ Змінна середовища TOKEN не задана!")
 
 bot = telebot.TeleBot(TOKEN)
-
+logger.info("🚀 Бот запущений")
 # Система балів за тривалість
 DURATION_POINTS = {
     "≤ 5 хв.": 1,
@@ -287,6 +292,14 @@ def start_command(message):
     user_id = message.from_user.id
     username = message.from_user.username or "Немає username"
     first_name = message.from_user.first_name or "Мандрівник"
+
+# ВИДАЛИТИ
+    if __name__ == "__main__":
+        try:
+            logger.info("🔹 Старт прослуховування повідомлень...")
+            bot.polling(none_stop=True)
+        except Exception as e:
+            logger.error(f"❌ Помилка в роботі бота: {e}")
 
     # Перевіряємо хто користувач
     if is_brother(user_id):
