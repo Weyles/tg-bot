@@ -1,4 +1,5 @@
 import telebot
+import logging
 import os
 import json
 import gspread
@@ -46,7 +47,9 @@ user_sessions = {}
 admin_review_sessions = {}  # Для оцінки робіт адміном
 admin_goal_sessions = {}    # Для зміни мети адміном
 
-
+# Налаштування логування
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ФУНКЦІЇ ДЛЯ РОБОТИ З GOOGLE SHEETS
 def init_user_data(user_id, username, first_name):
