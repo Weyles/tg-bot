@@ -309,14 +309,6 @@ def start_command(message):
     username = message.from_user.username or "Немає username"
     first_name = message.from_user.first_name or "Мандрівник"
 
-# ВИДАЛИТИ
-    if __name__ == "__main__":
-        try:
-            logger.info("🔹 Старт прослуховування повідомлень...")
-            bot.polling(none_stop=True)
-        except Exception as e:
-            logger.error(f"❌ Помилка в роботі бота: {e}")
-
     # Перевіряємо хто користувач
     if is_brother(user_id):
         user_data = init_user_data(user_id, username, first_name)
