@@ -49,6 +49,9 @@ DURATION_POINTS = {
     "≥ 1 год.": "review"  # Потребує перевірки
 }
 
+# Підключення до таблиці
+workbook = client.open_by_key(SHEET_ID)  # Spreadsheet
+
 MY_ID = 367161855
 BROTHER_ID = 908753738
 
@@ -132,16 +135,16 @@ def update_user_data(user_id, updates):
 
 
 def update_activity_log(row_id, updates):
-    """Оновлює запис в лозі активностей"""
+    """Оновлює запис в логу активностей"""
     try:
-        log_sheet = sheet.worksheet("Activity Logs")
+        log_sheet = workbook.worksheet("Activity Logs")
 
         # Оновлюємо потрібні поля
+        headers = log_sheet.row_values(1)
+        print(f"📋 Заголовки логу: {headers}")
+
         for col_name, value in updates.items():
             col_index = None
-            headers = log_sheet.row_values(1)
-            print(f"📋 Заголовки логу: {headers}")
-
             if col_name == "points_earned" and "Points Earned" in headers:
                 col_index = headers.index("Points Earned") + 1
             elif col_name == "admin_reviewed" and "Admin Reviewed" in headers:
@@ -162,7 +165,7 @@ def update_activity_log(row_id, updates):
 def get_gift_data():
     """Отримує дані про поточний подарунок"""
     try:
-        gift_sheet = sheet.worksheet("Gift Settings")
+        gift_sheet = workbook.worksheet("Gift Settings")
         records = gift_sheet.get_all_records()
         if records:
             return records[0]  # Перший запис - поточний подарунок
@@ -183,7 +186,7 @@ def get_gift_data():
 def update_gift_data(updates):
     """Оновлює дані про подарунок"""
     try:
-        gift_sheet = sheet.worksheet("Gift Settings")
+        gift_sheet = workbook.worksheet("Gift Settings")
         current_data = get_gift_data()
 
         # Оновлюємо дані
@@ -201,11 +204,12 @@ def update_gift_data(updates):
         logger.error(f"Помилка при оновленні даних подарунка: {e}")
         return False
 
+
 def add_activity_log(user_id, activity_type, description, duration, points_earned, has_photo=False, needs_review=False,
                      photo_file_id=None, admin_reviewed=False):
     """Додає запис про активність в лист логів"""
     try:
-        log_sheet = sheet.worksheet("Activity Logs")
+        log_sheet = workbook.worksheet("Activity Logs")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         log_entry = [
@@ -231,38 +235,41 @@ def add_activity_log(user_id, activity_type, description, duration, points_earne
         logger.error(f"Помилка при додаванні логу: {e}")
         return None
 
+
 def setup_sheets_structure():
     """Створює необхідну структуру таблиць якщо її немає"""
     try:
+        # Лист логів
         try:
-            log_sheet = sheet.worksheet("Activity Logs")
+            log_sheet = workbook.worksheet("Activity Logs")
         except gspread.exceptions.WorksheetNotFound:
-            log_sheet = sheet.add_worksheet(title="Activity Logs", rows=1000, cols=10)
-            # Додаємо заголовки
+            log_sheet = workbook.add_worksheet(title="Activity Logs", rows=1000, cols=10)
             log_headers = ["Timestamp", "User ID", "Activity Type", "Description", "Duration", "Has Photo",
                            "Points Earned", "Needs Review", "Photo File ID", "Admin Reviewed"]
             log_sheet.append_row(log_headers)
             logger.info("Створено лист 'Activity Logs'")
 
+        # Лист подарунків
         try:
-            gift_sheet = sheet.worksheet("Gift Settings")
+            gift_sheet = workbook.worksheet("Gift Settings")
         except gspread.exceptions.WorksheetNotFound:
-            gift_sheet = sheet.add_worksheet(title="Gift Settings", rows=10, cols=3)
-            # Додаємо заголовки та дефолтні дані
+            gift_sheet = workbook.add_worksheet(title="Gift Settings", rows=10, cols=3)
             gift_sheet.append_row(['goal', 'description', 'photo_file_id'])
             gift_sheet.append_row([100, "Гра 'The Witcher 3: Wild Hunt'\nПовна версія з усіма DLC!", ""])
             logger.info("Створено лист 'Gift Settings'")
 
-        # Перевіряємо структуру основного листа
-        main_sheet = sheet.worksheet("Bot Database")
-        current_headers = main_sheet.row_values(1)
+        # Основний лист
+        try:
+            main_sheet = workbook.worksheet("Bot Database")
+        except gspread.exceptions.WorksheetNotFound:
+            main_sheet = workbook.add_worksheet(title="Bot Database", rows=100, cols=10)
 
+        current_headers = main_sheet.row_values(1)
         required_headers = [
             "user_id", "username", "first_name",
             "english", "workout", "stretching", "other",
             "total_points", "goal", "last_activity", "gifts_received"
         ]
-
         if current_headers != required_headers:
             main_sheet.clear()
             main_sheet.append_row(required_headers)
@@ -270,6 +277,7 @@ def setup_sheets_structure():
 
     except Exception as e:
         logger.error(f"Помилка при налаштуванні структури: {e}")
+
 
 
 def is_brother(user_id):
