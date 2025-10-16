@@ -4,6 +4,8 @@ import logging
 import telebot
 import gspread
 from google.oauth2.service_account import Credentials
+from datetime import datetime
+from telebot import types
 
 # ---------------------- ЛОГЕР ----------------------
 logging.basicConfig(level=logging.INFO)
@@ -46,6 +48,9 @@ DURATION_POINTS = {
     "≤ 45 хв.": 4,
     "≥ 1 год.": "review"  # Потребує перевірки
 }
+
+MY_ID = 367161855
+BROTHER_ID = 908753738
 
 # Тимчасове сховище для даних користувачів
 user_sessions = {}
@@ -129,7 +134,7 @@ def update_user_data(user_id, updates):
 def update_activity_log(row_id, updates):
     """Оновлює запис в лозі активностей"""
     try:
-        log_sheet = workbook.worksheet("Activity Logs")
+        log_sheet = sheet.worksheet("Activity Logs")
 
         # Оновлюємо потрібні поля
         for col_name, value in updates.items():
@@ -157,7 +162,7 @@ def update_activity_log(row_id, updates):
 def get_gift_data():
     """Отримує дані про поточний подарунок"""
     try:
-        gift_sheet = workbook.worksheet("Gift Settings")
+        gift_sheet = sheet.worksheet("Gift Settings")
         records = gift_sheet.get_all_records()
         if records:
             return records[0]  # Перший запис - поточний подарунок
@@ -178,7 +183,7 @@ def get_gift_data():
 def update_gift_data(updates):
     """Оновлює дані про подарунок"""
     try:
-        gift_sheet = workbook.worksheet("Gift Settings")
+        gift_sheet = sheet.worksheet("Gift Settings")
         current_data = get_gift_data()
 
         # Оновлюємо дані
@@ -200,7 +205,7 @@ def add_activity_log(user_id, activity_type, description, duration, points_earne
                      photo_file_id=None, admin_reviewed=False):
     """Додає запис про активність в лист логів"""
     try:
-        log_sheet = workbook.worksheet("Activity Logs")
+        log_sheet = sheet.worksheet("Activity Logs")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         log_entry = [
@@ -230,9 +235,9 @@ def setup_sheets_structure():
     """Створює необхідну структуру таблиць якщо її немає"""
     try:
         try:
-            log_sheet = workbook.worksheet("Activity Logs")
+            log_sheet = sheet.worksheet("Activity Logs")
         except gspread.exceptions.WorksheetNotFound:
-            log_sheet = workbook.add_worksheet(title="Activity Logs", rows=1000, cols=10)
+            log_sheet = sheet.add_worksheet(title="Activity Logs", rows=1000, cols=10)
             # Додаємо заголовки
             log_headers = ["Timestamp", "User ID", "Activity Type", "Description", "Duration", "Has Photo",
                            "Points Earned", "Needs Review", "Photo File ID", "Admin Reviewed"]
@@ -240,16 +245,16 @@ def setup_sheets_structure():
             logger.info("Створено лист 'Activity Logs'")
 
         try:
-            gift_sheet = workbook.worksheet("Gift Settings")
+            gift_sheet = sheet.worksheet("Gift Settings")
         except gspread.exceptions.WorksheetNotFound:
-            gift_sheet = workbook.add_worksheet(title="Gift Settings", rows=10, cols=3)
+            gift_sheet = sheet.add_worksheet(title="Gift Settings", rows=10, cols=3)
             # Додаємо заголовки та дефолтні дані
             gift_sheet.append_row(['goal', 'description', 'photo_file_id'])
             gift_sheet.append_row([100, "Гра 'The Witcher 3: Wild Hunt'\nПовна версія з усіма DLC!", ""])
             logger.info("Створено лист 'Gift Settings'")
 
         # Перевіряємо структуру основного листа
-        main_sheet = workbook.worksheet("Bot Database")
+        main_sheet = sheet.worksheet("Bot Database")
         current_headers = main_sheet.row_values(1)
 
         required_headers = [
