@@ -1,13 +1,11 @@
-import logging
 import json
+import os
+import logging
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Налаштування логування
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ---------------------- GOOGLE SHEETS ----------------------
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
@@ -18,16 +16,14 @@ SHEET_ID = "1TEBRTf_gRi2w-YaOPmouH95tPUR-y5LQIBHKrJ0wjmE"
 try:
     creds_json = os.environ.get("GOOGLE_CREDENTIALS")
     if not creds_json:
-        raise ValueError("❌ Змінна середовища GOOGLE_CREDENTIALS не знайдена!")
+        raise ValueError("❌ Змінна середовища GOOGLE_CREDENTIALS не встановлена!")
 
     creds_dict = json.loads(creds_json)
     creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-
     client = gspread.authorize(creds)
     workbook = client.open_by_key(SHEET_ID)
     sheet = workbook.worksheet("Bot Database")
     logger.info("✅ Успішне підключення до Google Sheets через змінну середовища")
-
 except Exception as e:
     logger.error(f"❌ Помилка підключення до Google Sheets: {e}")
     raise
