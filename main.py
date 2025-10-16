@@ -10,14 +10,18 @@ from telebot import types
 import os
 TOKEN = os.environ.get('TOKEN', '8254409689:AAFg9v-RaCSnI2LB2BCflvTv3DGeNpStENc')
 MY_ID = 367161855
-BROTHER_ID = 908753738
+BROTHER_ID = 5657747508
 
 # Налаштування логування
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------------- GOOGLE SHEETS ----------------------
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",  # Для роботи з таблицями
+    "https://www.googleapis.com/auth/drive",  # Для доступу до Drive
+    "https://www.googleapis.com/auth/drive.file"  # Для роботи з файлами
+]
 SHEET_ID = "1TEBRTf_gRi2w-YaOPmouH95tPUR-y5LQIBHKrJ0wjmE"
 
 # Ініціалізація Google Sheets
@@ -43,17 +47,6 @@ try:
     logger.info("✅ Успішне підключення до Google Sheets")
 except Exception as e:
     logger.error(f"❌ Помилка підключення до Google Sheets: {e}")
-    raise
-
-# Ініціалізація Google Sheets
-try:
-    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-    client = gspread.authorize(creds)
-    workbook = client.open_by_key(SHEET_ID)
-    sheet = workbook.worksheet("Bot Database")
-    logger.info("Успішне підключення до Google Sheets")
-except Exception as e:
-    logger.error(f"Помилка підключення до Google Sheets: {e}")
     raise
 
 # БОТ
