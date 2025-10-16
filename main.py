@@ -7,6 +7,7 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from telebot import types
 from flask import Flask, request
+import time
 
 # ---------------------- ЛОГЕР ----------------------
 logging.basicConfig(level=logging.INFO)
