@@ -1,19 +1,7 @@
 import logging
-from datetime import datetime
-import os
 import json
-import telebot
-from telebot import types
 import gspread
 from google.oauth2.service_account import Credentials
-
-# ---------------------- НАЛАШТУВАННЯ ----------------------
-TOKEN = os.environ.get('TOKEN')
-if not TOKEN:
-    raise ValueError("❌ Змінна середовища TOKEN не знайдена!")
-
-MY_ID = 367161855
-BROTHER_ID = 5657747508
 
 # Налаштування логування
 logging.basicConfig(level=logging.INFO)
@@ -25,12 +13,10 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file"
 ]
-
 SHEET_ID = "1TEBRTf_gRi2w-YaOPmouH95tPUR-y5LQIBHKrJ0wjmE"
 
-# Ініціалізація Google Sheets через змінну середовища
 try:
-    creds_json = os.environ.get('GOOGLE_CREDENTIALS')
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
     if not creds_json:
         raise ValueError("❌ Змінна середовища GOOGLE_CREDENTIALS не знайдена!")
 
@@ -40,10 +26,12 @@ try:
     client = gspread.authorize(creds)
     workbook = client.open_by_key(SHEET_ID)
     sheet = workbook.worksheet("Bot Database")
-    logger.info("✅ Успішне підключення до Google Sheets через env")
+    logger.info("✅ Успішне підключення до Google Sheets через змінну середовища")
+
 except Exception as e:
     logger.error(f"❌ Помилка підключення до Google Sheets: {e}")
     raise
+
 
 # ---------------------- БОТ ----------------------
 bot = telebot.TeleBot(TOKEN)
