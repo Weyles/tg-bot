@@ -3,6 +3,7 @@ import os
 import logging
 import gspread
 from google.oauth2.service_account import Credentials
+import os
 import telebot
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,11 @@ except Exception as e:
 
 
 # ---------------------- БОТ ----------------------
+TOKEN = os.environ.get('TOKEN')  # читаємо токен з середовища
+
+if not TOKEN:
+    raise ValueError("❌ Змінна середовища TOKEN не задана!")
+
 bot = telebot.TeleBot(TOKEN)
 
 # Система балів за тривалість
