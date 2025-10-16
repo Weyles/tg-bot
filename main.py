@@ -1,14 +1,17 @@
 import logging
 from datetime import datetime
-
-import gspread
-import telebot
-from google.oauth2.service_account import Credentials
-from telebot import types
-
-#НАЛАШТУВАННЯ
 import os
-TOKEN = os.environ.get('TOKEN', '8254409689:AAFg9v-RaCSnI2LB2BCflvTv3DGeNpStENc')
+import json
+import telebot
+from telebot import types
+import gspread
+from google.oauth2.service_account import Credentials
+
+# ---------------------- НАЛАШТУВАННЯ ----------------------
+TOKEN = os.environ.get('TOKEN')
+if not TOKEN:
+    raise ValueError("❌ Змінна середовища TOKEN не знайдена!")
+
 MY_ID = 367161855
 BROTHER_ID = 5657747508
 
@@ -18,38 +21,31 @@ logger = logging.getLogger(__name__)
 
 # ---------------------- GOOGLE SHEETS ----------------------
 SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",  # Для роботи з таблицями
-    "https://www.googleapis.com/auth/drive",  # Для доступу до Drive
-    "https://www.googleapis.com/auth/drive.file"  # Для роботи з файлами
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.file"
 ]
+
 SHEET_ID = "1TEBRTf_gRi2w-YaOPmouH95tPUR-y5LQIBHKrJ0wjmE"
 
-# Ініціалізація Google Sheets
+# Ініціалізація Google Sheets через змінну середовища
 try:
-    import json
-    import os
-
-    # Спочатку пробуємо отримати credentials зі змінної середовища
     creds_json = os.environ.get('GOOGLE_CREDENTIALS')
-    if creds_json:
-        # Використовуємо змінну середовища
-        creds_dict = json.loads(creds_json)
-        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-        logger.info("✅ Використовуються credentials зі змінної середовища")
-    else:
-        # Використовуємо локальний файл (для розробки)
-        creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
-        logger.info("✅ Використовуються credentials з файлу")
+    if not creds_json:
+        raise ValueError("❌ Змінна середовища GOOGLE_CREDENTIALS не знайдена!")
+
+    creds_dict = json.loads(creds_json)
+    creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 
     client = gspread.authorize(creds)
     workbook = client.open_by_key(SHEET_ID)
     sheet = workbook.worksheet("Bot Database")
-    logger.info("✅ Успішне підключення до Google Sheets")
+    logger.info("✅ Успішне підключення до Google Sheets через env")
 except Exception as e:
     logger.error(f"❌ Помилка підключення до Google Sheets: {e}")
     raise
 
-# БОТ
+# ---------------------- БОТ ----------------------
 bot = telebot.TeleBot(TOKEN)
 
 # Система балів за тривалість
@@ -64,7 +60,8 @@ DURATION_POINTS = {
 # Тимчасове сховище для даних користувачів
 user_sessions = {}
 admin_review_sessions = {}  # Для оцінки робіт адміном
-admin_goal_sessions = {}  # Для зміни мети адміном
+admin_goal_sessions = {}    # Для зміни мети адміном
+
 
 
 # ФУНКЦІЇ ДЛЯ РОБОТИ З GOOGLE SHEETS
