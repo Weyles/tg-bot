@@ -6,6 +6,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 from telebot import types
+from flask import Flask, request
 
 # ---------------------- ЛОГЕР ----------------------
 logging.basicConfig(level=logging.INFO)
@@ -36,9 +37,10 @@ except Exception as e:
 # ---------------------- БОТ ----------------------
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
-    raise Exception("❌ Змінна середовища TOKEN не задана!")
+    raise Exception("❌ TOKEN не задано!")
 
 bot = telebot.TeleBot(TOKEN)
+
 logger.info("🚀 Бот запущений")
 # Система балів за тривалість
 DURATION_POINTS = {
@@ -1292,26 +1294,28 @@ def handle_goal_photo_final(message):
 
 
 # ЗАПУСК БОТА (версія для Railway)
-import flask
-import time
+WEBHOOK_URL = "https://tg-bot-production-7df9.up.railway.app/"  # твій публічний URL
 
-app = flask.Flask(__name__)
+# Flask app для вебхука
+app = Flask(__name__)
 
-@app.route(f"/{TOKEN}", methods=['POST'])
-def receive_update():
-    """Отримання оновлень від Telegram через webhook"""
-    try:
-        update = telebot.types.Update.de_json(flask.request.stream.read().decode('utf-8'))
-        bot.process_new_updates([update])
-    except Exception as e:
-        logger.error(f"Помилка при обробці webhook: {e}")
-    return "OK", 200
+# Встановлюємо вебхук при старті
+bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL)
 
+@app.route("/", methods=["POST"])
+def webhook():
+    json_data = request.get_data().decode("utf-8")
+    update = telebot.types.Update.de_json(json_data)
+    bot.process_new_updates([update])
+    return "", 200
 
-@app.route("/", methods=['GET'])
+@app.route("/", methods=["GET"])
 def index():
-    """Перевірка, що бот працює"""
-    return "Бот запущений 🚀", 200
+    return "Bot is running", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 
 if __name__ == "__main__":
