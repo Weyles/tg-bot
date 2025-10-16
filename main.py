@@ -1281,11 +1281,49 @@ def handle_goal_photo_final(message):
         del admin_goal_sessions[message.from_user.id]
 
 
-# ЗАПУСК БОТА
-if __name__ == '__main__':
-    logger.info("Бот запущений...")
+# ЗАПУСК БОТА (версія для Railway)
+import flask
+import time
+
+app = flask.Flask(__name__)
+
+@app.route(f"/{TOKEN}", methods=['POST'])
+def receive_update():
+    """Отримання оновлень від Telegram через webhook"""
+    try:
+        update = telebot.types.Update.de_json(flask.request.stream.read().decode('utf-8'))
+        bot.process_new_updates([update])
+    except Exception as e:
+        logger.error(f"Помилка при обробці webhook: {e}")
+    return "OK", 200
+
+
+@app.route("/", methods=['GET'])
+def index():
+    """Перевірка, що бот працює"""
+    return "Бот запущений 🚀", 200
+
+
+if __name__ == "__main__":
+    logger.info("🚀 Запуск бота у середовищі Railway...")
     try:
         setup_sheets_structure()
-        bot.polling(none_stop=True, interval=0)
+
+        # Отримуємо порт і URL з Railway
+        PORT = int(os.environ.get("PORT", 5000))
+        RAILWAY_URL = os.environ.get("RAILWAY_STATIC_URL")
+
+        if not RAILWAY_URL:
+            logger.error("❌ Змінна середовища RAILWAY_STATIC_URL не задана!")
+        else:
+            full_webhook_url = f"https://{RAILWAY_URL}/{TOKEN}"
+            bot.remove_webhook()
+            time.sleep(1)
+            bot.set_webhook(url=full_webhook_url)
+            logger.info(f"✅ Webhook встановлено: {full_webhook_url}")
+
+        app.run(host="0.0.0.0", port=PORT)
+
     except Exception as e:
-        logger.error(f"Помилка при роботі бота: {e}")
+        logger.error(f"❌ Помилка при запуску бота: {e}")
+
