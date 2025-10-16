@@ -1,41 +1,34 @@
-import json
+import telebot
 import os
-import logging
+import json
 import gspread
 from google.oauth2.service_account import Credentials
-import os
-import telebot
-
-logger = logging.getLogger(__name__)
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file"
 ]
+
 SHEET_ID = "1TEBRTf_gRi2w-YaOPmouH95tPUR-y5LQIBHKrJ0wjmE"
 
-try:
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
-    if not creds_json:
-        raise ValueError("❌ Змінна середовища GOOGLE_CREDENTIALS не встановлена!")
+# Отримуємо credentials з змінної середовища
+creds_json = os.environ.get('GOOGLE_CREDENTIALS')
+if not creds_json:
+    raise Exception("❌ GOOGLE_CREDENTIALS не задано!")
 
-    creds_dict = json.loads(creds_json)
-    creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-    client = gspread.authorize(creds)
-    workbook = client.open_by_key(SHEET_ID)
-    sheet = workbook.worksheet("Bot Database")
-    logger.info("✅ Успішне підключення до Google Sheets через змінну середовища")
-except Exception as e:
-    logger.error(f"❌ Помилка підключення до Google Sheets: {e}")
-    raise
+creds_dict = json.loads(creds_json)
+creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+client = gspread.authorize(creds)
+sheet = client.open_by_key(SHEET_ID).worksheet("Bot Database")
+
 
 
 # ---------------------- БОТ ----------------------
-TOKEN = os.environ.get('TOKEN')  # читаємо токен з середовища
-
+import telebot
+TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
-    raise ValueError("❌ Змінна середовища TOKEN не задана!")
+    raise Exception("❌ TOKEN не задано!")
 
 bot = telebot.TeleBot(TOKEN)
 
