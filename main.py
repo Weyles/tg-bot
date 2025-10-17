@@ -56,16 +56,12 @@ DURATION_POINTS = {
 workbook = client.open_by_key(SHEET_ID)  # Spreadsheet
 
 MY_ID = 367161855
-BROTHER_ID = 908753738
+BROTHER_ID = 5657747508
 
 # Тимчасове сховище для даних користувачів
 user_sessions = {}
 admin_review_sessions = {}  # Для оцінки робіт адміном
 admin_goal_sessions = {}    # Для зміни мети адміном
-
-# Налаштування логування
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # ФУНКЦІЇ ДЛЯ РОБОТИ З GOOGLE SHEETS
 def init_user_data(user_id, username, first_name):
@@ -1134,76 +1130,6 @@ def handle_review_points(message):
         del admin_review_sessions[message.from_user.id]
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('cancel_review_'))
-def handle_cancel_review(call):
-    """Обробляє скасування оцінки"""
-    if not is_admin(call.from_user.id):
-        bot.answer_callback_query(call.id, "⛔ Немає доступу!")
-        return
-
-    try:
-        parts = call.data.split('_')
-        if len(parts) >= 4:
-            log_row_id = int(parts[2])
-            points = int(parts[3])
-
-            user_data = get_user_data(BROTHER_ID)
-            if user_data:
-                new_total = user_data['total_points'] - points
-                updates = {
-                    'total_points': max(0, new_total),  # Не менше 0
-                    'last_activity': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                update_user_data(BROTHER_ID, updates)
-
-                update_activity_log(log_row_id, {
-                    "points_earned": 0,
-                    "admin_reviewed": "Скасовано"
-                })
-
-            brother_message_id = None
-            admin_message_id = None
-
-            for user_id, session in admin_review_sessions.items():
-                if session.get('log_row_id') == log_row_id:
-                    brother_message_id = session.get('brother_message_id')
-                    admin_message_id = session.get('admin_message_id')
-                    # Видаляємо сесію
-                    if user_id in admin_review_sessions:
-                        del admin_review_sessions[user_id]
-                    break
-
-            if brother_message_id:
-                try:
-                    bot.delete_message(BROTHER_ID, brother_message_id)
-                except Exception as e:
-                    logger.error(f"Помилка при видаленні повідомлення брата: {e}")
-
-            if admin_message_id:
-                try:
-                    bot.delete_message(call.message.chat.id, admin_message_id)
-                except Exception as e:
-                    logger.error(f"Помилка при видаленні повідомлення адміна: {e}")
-
-            try:
-                bot.delete_message(call.message.chat.id, call.message.message_id)
-            except Exception as e:
-                logger.error(f"Помилка при видаленні поточного повідомлення: {e}")
-
-            # Сповіщаємо брата
-            bot.send_message(BROTHER_ID, "❌ Оцінка скасована адміністратором.")
-
-            bot.send_message(call.message.chat.id, f"❌ Оцінка скасована. Віднімано {points} балів.")
-
-            bot.answer_callback_query(call.id, "✅ Оцінка скасована!")
-        else:
-            bot.answer_callback_query(call.id, "❌ Помилка при скасуванні")
-
-    except Exception as e:
-        logger.error(f"Помилка при скасуванні оцінки: {e}")
-        bot.answer_callback_query(call.id, "❌ Помилка при скасуванні")
-
-
 @bot.message_handler(func=lambda message:
 admin_goal_sessions.get(message.from_user.id, {}).get('state') == 'waiting_goal_description' and
 is_admin(message.from_user.id))
@@ -1296,41 +1222,45 @@ app = Flask(__name__)
 bot.remove_webhook()
 bot.set_webhook(url=WEBHOOK_URL)
 
+# ЗАМЕНИТЕ текущий маршрут Flask:
 @app.route("/", methods=["POST"])
 def webhook():
-    json_data = request.get_data().decode("utf-8")
-    update = telebot.types.Update.de_json(json_data)
-    bot.process_new_updates([update])
-    return "", 200
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+    return 'OK'
 
 @app.route("/", methods=["GET"])
 def index():
-    return "Bot is running", 200
+    return "Bot is running!", 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
-
+# ЗАМЕНИТЬ весь блок запуска в конце файла:
 if __name__ == "__main__":
     logger.info("🚀 Запуск бота у середовищі Railway...")
     try:
         setup_sheets_structure()
 
-        # Отримуємо порт і URL з Railway
-        PORT = int(os.environ.get("PORT", 5000))
-        RAILWAY_URL = os.environ.get("RAILWAY_STATIC_URL")
-
-        if not RAILWAY_URL:
-            logger.error("❌ Змінна середовища RAILWAY_STATIC_URL не задана!")
+        # Убедитесь, что переменные окружения установлены
+        if not os.environ.get("RAILWAY_STATIC_URL"):
+            logger.error("❌ RAILWAY_STATIC_URL не задана! Запуск в режимі полінга...")
+            bot.remove_webhook()
+            bot.polling(none_stop=True)
         else:
+            PORT = int(os.environ.get("PORT", 5000))
+            RAILWAY_URL = os.environ.get("RAILWAY_STATIC_URL")
             full_webhook_url = f"https://{RAILWAY_URL}/{TOKEN}"
+
             bot.remove_webhook()
             time.sleep(1)
             bot.set_webhook(url=full_webhook_url)
             logger.info(f"✅ Webhook встановлено: {full_webhook_url}")
 
-        app.run(host="0.0.0.0", port=PORT)
+            app.run(host="0.0.0.0", port=PORT)
 
     except Exception as e:
         logger.error(f"❌ Помилка при запуску бота: {e}")
-
